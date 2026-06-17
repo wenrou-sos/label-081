@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout.jsx'
+import Login from './pages/Login.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import Stores from './pages/Stores.jsx'
 import Services from './pages/Services.jsx'
@@ -11,11 +12,21 @@ import Employees from './pages/Employees.jsx'
 import Orders from './pages/Orders.jsx'
 import ShiftReports from './pages/ShiftReports.jsx'
 import ShiftReportDetail from './pages/ShiftReportDetail.jsx'
+import { getToken } from './services/api.js'
+
+function ProtectedRoute({ children }) {
+  const token = getToken()
+  if (!token) {
+    return <Navigate to="/login" replace />
+  }
+  return children
+}
 
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<Layout />}>
+      <Route path="/login" element={<Login />} />
+      <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="stores" element={<Stores />} />
@@ -29,6 +40,7 @@ export default function App() {
         <Route path="shift-reports" element={<ShiftReports />} />
         <Route path="shift-reports/:id" element={<ShiftReportDetail />} />
       </Route>
+      <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   )
 }

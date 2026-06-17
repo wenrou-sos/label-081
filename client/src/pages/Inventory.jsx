@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react'
 import { Card, StatCard, Button, Input, Select, Modal, Tag } from '../components/UI.jsx'
-import { inventoryApi, storesApi } from '../services/api.js'
+import { inventoryApi, storesApi, getCurrentUser } from '../services/api.js'
 
 export default function Inventory() {
   const [items, setItems] = useState([])
   const [stores, setStores] = useState([])
   const [categories, setCategories] = useState([])
   const [summary, setSummary] = useState(null)
+  const [currentUser, setCurrentUser] = useState(null)
+  const [isHeadquarters, setIsHeadquarters] = useState(false)
   const [filters, setFilters] = useState({ store_id: '', keyword: '', category: '', low_stock_only: false })
   const [modalType, setModalType] = useState(null)
   const [editing, setEditing] = useState(null)
@@ -16,15 +18,34 @@ export default function Inventory() {
   const [records, setRecords] = useState({ list: [], total: 0 })
   const [recordItem, setRecordItem] = useState(null)
 
+  useEffect(() => {
+    const user = getCurrentUser()
+    setCurrentUser(user)
+    const isHQ = user?.role === 'headquarters'
+    setIsHeadquarters(isHQ)
+
+    if (!isHQ && user?.store_id) {
+      setFilters(prev => ({ ...prev, store_id: String(user.store_id) }))
+    }
+
+    const init = async () => {
+      const sRes = await storesApi.list()
+      if (sRes.success) setStores(sRes.data)
+    }
+    init()
+  }, [])
+
   const loadData = async () => {
     try {
+      const effectiveStoreId = isHeadquarters ? filters.store_id : (currentUser?.store_id || filters.store_id)
       const [iRes, cRes, sRes] = await Promise.all([
         inventoryApi.list({
           ...filters,
+          store_id: effectiveStoreId,
           low_stock_only: filters.low_stock_only ? 'true' : 'false'
         }),
-        inventoryApi.categories(),
-        inventoryApi.summary({ store_id: filters.store_id })
+        inventoryApi.categories({ store_id: effectiveStoreId }),
+        inventoryApi.summary({ store_id: effectiveStoreId })
       ])
       if (iRes.success) setItems(iRes.data)
       if (cRes.success) setCategories(cRes.data)
@@ -33,18 +54,17 @@ export default function Inventory() {
   }
 
   useEffect(() => {
-    const init = async () => {
-      const sRes = await storesApi.list()
-      if (sRes.success) setStores(sRes.data)
+    if (currentUser) {
+      loadData()
     }
-    init()
-  }, [])
-
-  useEffect(() => { loadData() }, [filters])
+  }, [filters, currentUser])
 
   const openAdd = () => {
     setEditing(null)
-    setForm({ name: '', unit: '瓶', quantity: 0, min_stock: 0, category: '', remark: '', store_id: filters.store_id || stores[0]?.id || '' })
+    const defaultStoreId = isHeadquarters
+      ? (filters.store_id || stores[0]?.id || '')
+      : String(currentUser?.store_id || '')
+    setForm({ name: '', unit: '瓶', quantity: 0, min_stock: 0, category: '', remark: '', store_id: defaultStoreId })
     setModalType('add')
   }
 
@@ -168,11 +188,13 @@ export default function Inventory() {
 
       <Card style={{ marginBottom: 16 }}>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-          <div style={{ minWidth: 160 }}>
-            <Select label="" value={filters.store_id} onChange={(v) => setFilters({ ...filters, store_id: v })}
-              options={stores.map(s => ({ value: s.id, label: s.name }))}
-              placeholder="所有门店" style={{ marginBottom: 0 }} />
-          </div>
+          {isHeadquarters && (
+            <div style={{ minWidth: 160 }}>
+              <Select label="" value={filters.store_id} onChange={(v) => setFilters({ ...filters, store_id: v })}
+                options={stores.map(s => ({ value: s.id, label: s.name }))}
+                placeholder="所有门店" style={{ marginBottom: 0 }} />
+            </div>
+          )}
           <div style={{ minWidth: 140 }}>
             <Select label="" value={filters.category} onChange={(v) => setFilters({ ...filters, category: v })}
               options={categoryOptions}
@@ -191,7 +213,7 @@ export default function Inventory() {
             />
             只看低库存
           </label>
-          <Button variant="secondary" onClick={() => setFilters({ store_id: '', keyword: '', category: '', low_stock_only: false })}>重置</Button>
+          <Button variant="secondary" onClick={() => setFilters({ store_id: isHeadquarters ? '' : (currentUser?.store_id || ''), keyword: '', category: '', low_stock_only: false })}>重置</Button>
         </div>
       </Card>
 
@@ -243,8 +265,24 @@ export default function Inventory() {
       </Card>
 
       <Modal open={modalType === 'add'} onClose={() => setModalType(null)} title="新增库存物品" width={480}>
-        <Select label="所属门店" value={form.store_id} onChange={(v) => setForm({ ...form, store_id: v })}
-          options={stores.map(s => ({ value: s.id, label: s.name }))} placeholder="请选择门店" />
+        {isHeadquarters ? (
+          <Select label="所属门店" value={form.store_id} onChange={(v) => setForm({ ...form, store_id: v })}
+            options={stores.map(s => ({ value: s.id, label: s.name }))} placeholder="请选择门店" />
+        ) : (
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 13, color: '#475569', marginBottom: 6, fontWeight: 500 }}>所属门店</div>
+            <div style={{
+              padding: '9px 12px',
+              background: '#f1f5f9',
+              border: '1px solid #e2e8f0',
+              borderRadius: 8,
+              fontSize: 14,
+              color: '#334155'
+            }}>
+              {stores.find(s => s.id === Number(currentUser?.store_id))?.name || currentUser?.store_name || '-'}
+            </div>
+          </div>
+        )}
         <Input label="物品名称" value={form.name} onChange={(v) => setForm({ ...form, name: v })} placeholder="如：薰衣草精油" />
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <Select label="单位" value={form.unit} onChange={(v) => setForm({ ...form, unit: v })}

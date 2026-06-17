@@ -1,5 +1,24 @@
 import axios from 'axios'
 
+const TOKEN_KEY = 'footbath_token'
+const USER_KEY = 'footbath_user'
+
+export const getToken = () => localStorage.getItem(TOKEN_KEY)
+export const setToken = (token) => localStorage.setItem(TOKEN_KEY, token)
+export const removeToken = () => localStorage.removeItem(TOKEN_KEY)
+
+export const getCurrentUser = () => {
+  const userStr = localStorage.getItem(USER_KEY)
+  return userStr ? JSON.parse(userStr) : null
+}
+export const setCurrentUser = (user) => localStorage.setItem(USER_KEY, JSON.stringify(user))
+export const removeCurrentUser = () => localStorage.removeItem(USER_KEY)
+
+export const clearAuth = () => {
+  removeToken()
+  removeCurrentUser()
+}
+
 const api = axios.create({
   baseURL: '/api',
   timeout: 15000,
@@ -8,13 +27,36 @@ const api = axios.create({
   }
 })
 
+api.interceptors.request.use(
+  (config) => {
+    const token = getToken()
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
+    return config
+  },
+  (error) => Promise.reject(error)
+)
+
 api.interceptors.response.use(
   (response) => response.data,
   (error) => {
     console.error('API Error:', error)
+    if (error.response?.status === 401) {
+      clearAuth()
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login'
+      }
+    }
     return Promise.reject(error.response?.data || { success: false, message: error.message })
   }
 )
+
+export const authApi = {
+  login: (data) => api.post('/auth/login', data),
+  me: () => api.get('/auth/me'),
+  logout: () => api.post('/auth/logout')
+}
 
 export const storesApi = {
   list: () => api.get('/stores'),

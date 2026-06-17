@@ -9,6 +9,7 @@ import ordersRouter from './routes/orders.js';
 import shiftReportsRouter from './routes/shiftReports.js';
 import dashboardRouter from './routes/dashboard.js';
 import inventoryRouter from './routes/inventory.js';
+import authRouter from './routes/auth.js';
 import { query } from './utils/dbHelper.js';
 
 dotenv.config();
@@ -62,6 +63,7 @@ app.get('/api/init-demo', async (req, res) => {
   }
 });
 
+app.use('/api/auth', authRouter);
 app.use('/api/stores', storesRouter);
 app.use('/api/services', servicesRouter);
 app.use('/api/members', membersRouter);

@@ -1,25 +1,59 @@
-import { useState } from 'react'
-import { Outlet, NavLink, useLocation } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { getCurrentUser, clearAuth, authApi } from '../services/api.js'
 
 const menuItems = [
-  { path: '/dashboard', label: '数据看板', icon: '📊', group: '总部管理' },
-  { path: '/stores', label: '门店管理', icon: '🏪', group: '总部管理' },
-  { path: '/services', label: '项目定价', icon: '📋', group: '总部管理' },
-  { path: '/member-levels', label: '会员体系', icon: '💎', group: '总部管理' },
-  { path: '/employees', label: '员工管理', icon: '👥', group: '人事管理' },
-  { path: '/members', label: '会员管理', icon: '💳', group: '门店运营' },
-  { path: '/member-analysis', label: '会员分析', icon: '📈', group: '门店运营' },
-  { path: '/inventory', label: '库存管理', icon: '📦', group: '门店运营' },
-  { path: '/orders', label: '订单记录', icon: '💰', group: '门店运营' },
-  { path: '/shift-reports', label: '交接班报表', icon: '📝', group: '门店运营' },
+  { path: '/dashboard', label: '数据看板', icon: '📊', group: '总部管理', roles: ['headquarters', 'store_manager', 'cashier'] },
+  { path: '/stores', label: '门店管理', icon: '🏪', group: '总部管理', roles: ['headquarters'] },
+  { path: '/services', label: '项目定价', icon: '📋', group: '总部管理', roles: ['headquarters'] },
+  { path: '/member-levels', label: '会员体系', icon: '💎', group: '总部管理', roles: ['headquarters'] },
+  { path: '/employees', label: '员工管理', icon: '👥', group: '人事管理', roles: ['headquarters', 'store_manager'] },
+  { path: '/members', label: '会员管理', icon: '💳', group: '门店运营', roles: ['headquarters', 'store_manager', 'cashier'] },
+  { path: '/member-analysis', label: '会员分析', icon: '📈', group: '门店运营', roles: ['headquarters', 'store_manager'] },
+  { path: '/inventory', label: '库存管理', icon: '📦', group: '门店运营', roles: ['headquarters', 'store_manager', 'cashier'] },
+  { path: '/orders', label: '订单记录', icon: '💰', group: '门店运营', roles: ['headquarters', 'store_manager', 'cashier'] },
+  { path: '/shift-reports', label: '交接班报表', icon: '📝', group: '门店运营', roles: ['headquarters', 'store_manager', 'cashier'] },
 ]
 
 export default function Layout() {
   const location = useLocation()
+  const navigate = useNavigate()
   const [collapsed, setCollapsed] = useState(false)
+  const [currentUser, setCurrentUser] = useState(null)
+
+  useEffect(() => {
+    const user = getCurrentUser()
+    if (!user) {
+      navigate('/login', { replace: true })
+      return
+    }
+    setCurrentUser(user)
+    const fetchUser = async () => {
+      try {
+        const res = await authApi.me()
+        if (res.success) {
+          setCurrentUser(res.data)
+        }
+      } catch (e) { }
+    }
+    fetchUser()
+  }, [navigate])
+
+  const handleLogout = async () => {
+    if (!confirm('确定要退出登录吗？')) return
+    try {
+      await authApi.logout()
+    } catch (e) { }
+    clearAuth()
+    navigate('/login', { replace: true })
+  }
+
+  const visibleItems = currentUser
+    ? menuItems.filter(item => item.roles.includes(currentUser.role))
+    : []
 
   const groups = {}
-  menuItems.forEach(item => {
+  visibleItems.forEach(item => {
     if (!groups[item.group]) groups[item.group] = []
     groups[item.group].push(item)
   })
@@ -109,24 +143,55 @@ export default function Layout() {
         }}>
           <div>
             <h2 style={{ fontSize: 18, fontWeight: 600, color: '#1e293b' }}>
-              {menuItems.find(m => m.path === location.pathname)?.label || '管理平台'}
+              {visibleItems.find(m => m.path === location.pathname)?.label || '管理平台'}
             </h2>
+            {currentUser?.store_name && (
+              <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
+                当前门店：{currentUser.store_name}
+              </div>
+            )}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <span style={{
-              padding: '4px 12px',
-              background: '#dcfce7',
-              color: '#166534',
-              borderRadius: 20,
-              fontSize: 12,
-              fontWeight: 500
-            }}>总部管理员</span>
-            <div style={{
-              width: 36, height: 36, borderRadius: '50%',
-              background: 'linear-gradient(135deg, #0891b2, #0e7490)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: '#fff', fontWeight: 600, fontSize: 14
-            }}>A</div>
+            {currentUser && (
+              <>
+                <span style={{
+                  padding: '4px 12px',
+                  background: currentUser.role === 'headquarters' ? '#dcfce7' : '#dbeafe',
+                  color: currentUser.role === 'headquarters' ? '#166534' : '#1e40af',
+                  borderRadius: 20,
+                  fontSize: 12,
+                  fontWeight: 500
+                }}>
+                  {currentUser.role_name}
+                </span>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  cursor: 'pointer',
+                  padding: '4px 12px',
+                  borderRadius: 8,
+                  transition: 'background 0.2s',
+                }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                  onClick={handleLogout}
+                >
+                  <div style={{
+                    width: 32, height: 32, borderRadius: '50%',
+                    background: 'linear-gradient(135deg, #0891b2, #0e7490)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: '#fff', fontWeight: 600, fontSize: 13
+                  }}>
+                    {currentUser.username?.charAt(0).toUpperCase()}
+                  </div>
+                  <div style={{ fontSize: 13, color: '#334155' }}>
+                    <div style={{ fontWeight: 500 }}>{currentUser.username}</div>
+                    <div style={{ fontSize: 11, color: '#94a3b8' }}>点击退出</div>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </header>
 

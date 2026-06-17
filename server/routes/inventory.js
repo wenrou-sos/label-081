@@ -1,11 +1,16 @@
 import { Router } from 'express';
 import { query, queryOne } from '../utils/dbHelper.js';
+import { authMiddleware, getStoreFilter, requireStorePermission } from '../middleware/auth.js';
 
 const router = Router();
 
+router.use(authMiddleware);
+
 router.get('/', async (req, res) => {
   try {
-    const { store_id, keyword, category, low_stock_only } = req.query;
+    const { keyword, category, low_stock_only, store_id } = req.query;
+    const { storeId, isHeadquarters } = getStoreFilter(req, store_id);
+
     let sql = `
       SELECT i.*, s.name as store_name
       FROM inventory i
@@ -13,10 +18,12 @@ router.get('/', async (req, res) => {
       WHERE i.status = 'active'
     `;
     const params = [];
-    if (store_id) {
+
+    if (storeId) {
       sql += ' AND i.store_id = ?';
-      params.push(store_id);
+      params.push(storeId);
     }
+
     if (keyword) {
       sql += ' AND i.name LIKE ?';
       params.push(`%${keyword}%`);
@@ -38,7 +45,19 @@ router.get('/', async (req, res) => {
 
 router.get('/categories', async (req, res) => {
   try {
-    const rows = await query('SELECT DISTINCT category FROM inventory WHERE category IS NOT NULL AND category != "" ORDER BY category');
+    const { store_id } = req.query;
+    const { storeId } = getStoreFilter(req, store_id);
+
+    let sql = 'SELECT DISTINCT category FROM inventory WHERE category IS NOT NULL AND category != "" AND status = ?';
+    const params = ['active'];
+
+    if (storeId) {
+      sql += ' AND store_id = ?';
+      params.push(storeId);
+    }
+    sql += ' ORDER BY category';
+
+    const rows = await query(sql, params);
     res.json({ success: true, data: rows.map(r => r.category) });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -48,19 +67,21 @@ router.get('/categories', async (req, res) => {
 router.get('/summary', async (req, res) => {
   try {
     const { store_id } = req.query;
+    const { storeId } = getStoreFilter(req, store_id);
+
     let sql = 'SELECT COUNT(*) as total_items, SUM(quantity) as total_qty FROM inventory WHERE status = ?';
     const params = ['active'];
-    if (store_id) {
+    if (storeId) {
       sql += ' AND store_id = ?';
-      params.push(store_id);
+      params.push(storeId);
     }
     const totalRow = await queryOne(sql, params);
 
     let lowSql = 'SELECT COUNT(*) as low_count FROM inventory WHERE status = ? AND quantity <= min_stock';
     const lowParams = ['active'];
-    if (store_id) {
+    if (storeId) {
       lowSql += ' AND store_id = ?';
-      lowParams.push(store_id);
+      lowParams.push(storeId);
     }
     const lowRow = await queryOne(lowSql, lowParams);
 
@@ -88,6 +109,11 @@ router.get('/:id', async (req, res) => {
     if (!item) {
       return res.status(404).json({ success: false, message: '物品不存在' });
     }
+
+    if (!requireStorePermission(req, res, item.store_id)) {
+      return;
+    }
+
     res.json({ success: true, data: item });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -97,13 +123,23 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const { store_id, name, unit, quantity, min_stock, category, remark } = req.body;
-    if (!store_id || !name) {
-      return res.status(400).json({ success: false, message: '门店和物品名称不能为空' });
+    if (!name) {
+      return res.status(400).json({ success: false, message: '物品名称不能为空' });
     }
+
+    const { storeId, isHeadquarters } = getStoreFilter(req, store_id);
+    if (!storeId) {
+      return res.status(400).json({ success: false, message: '请选择门店' });
+    }
+
+    if (!requireStorePermission(req, res, storeId)) {
+      return;
+    }
+
     const result = await query(
       `INSERT INTO inventory (store_id, name, unit, quantity, min_stock, category, remark)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [store_id, name, unit || '瓶', quantity || 0, min_stock || 0, category || null, remark || null]
+      [storeId, name, unit || '瓶', quantity || 0, min_stock || 0, category || null, remark || null]
     );
     const item = await queryOne('SELECT * FROM inventory WHERE id = ?', [result.insertId]);
     res.json({ success: true, data: item });
@@ -118,6 +154,15 @@ router.post('/', async (req, res) => {
 
 router.put('/:id', async (req, res) => {
   try {
+    const existingItem = await queryOne('SELECT * FROM inventory WHERE id = ?', [req.params.id]);
+    if (!existingItem) {
+      return res.status(404).json({ success: false, message: '物品不存在' });
+    }
+
+    if (!requireStorePermission(req, res, existingItem.store_id)) {
+      return;
+    }
+
     const { name, unit, min_stock, category, remark } = req.body;
     await query(
       `UPDATE inventory SET name = ?, unit = ?, min_stock = ?, category = ?, remark = ? WHERE id = ?`,
@@ -136,6 +181,15 @@ router.put('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
+    const existingItem = await queryOne('SELECT * FROM inventory WHERE id = ?', [req.params.id]);
+    if (!existingItem) {
+      return res.status(404).json({ success: false, message: '物品不存在' });
+    }
+
+    if (!requireStorePermission(req, res, existingItem.store_id)) {
+      return;
+    }
+
     await query('UPDATE inventory SET status = ? WHERE id = ?', ['inactive', req.params.id]);
     res.json({ success: true, message: '已删除' });
   } catch (error) {
@@ -153,6 +207,11 @@ router.post('/stock-in', async (req, res) => {
     if (!item) {
       return res.status(404).json({ success: false, message: '物品不存在' });
     }
+
+    if (!requireStorePermission(req, res, item.store_id)) {
+      return;
+    }
+
     const beforeQty = Number(item.quantity);
     const afterQty = beforeQty + Number(quantity);
 
@@ -180,6 +239,11 @@ router.post('/stock-out', async (req, res) => {
     if (!item) {
       return res.status(404).json({ success: false, message: '物品不存在' });
     }
+
+    if (!requireStorePermission(req, res, item.store_id)) {
+      return;
+    }
+
     const beforeQty = Number(item.quantity);
     if (beforeQty < Number(quantity)) {
       return res.status(400).json({ success: false, message: '库存不足，无法出库' });
@@ -207,6 +271,15 @@ router.get('/:itemId/records', async (req, res) => {
     const pageNum = parseInt(page);
     const pageSize = parseInt(page_size);
     const offset = (pageNum - 1) * pageSize;
+
+    const item = await queryOne('SELECT * FROM inventory WHERE id = ?', [itemId]);
+    if (!item) {
+      return res.status(404).json({ success: false, message: '物品不存在' });
+    }
+
+    if (!requireStorePermission(req, res, item.store_id)) {
+      return;
+    }
 
     let countSql = 'SELECT COUNT(*) as total FROM inventory_records WHERE item_id = ?';
     let sql = `
