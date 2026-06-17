@@ -1,0 +1,15 @@
+:root {
+  --colors-bg-canvas: #ffffff;
+  --colors-bg-subtle: #f8fafc;
+  --colors-bg-emphasized: #f1f5f9;
+  --colors-fg-default: #0f172a;
+  --colors-fg-muted: #64748b;
+  --colors-fg-subtle: #94a3b8;
+  --colors-accent-default: #0891b2;
+  --colors-accent-emphasized: #0e7490;
+  --colors-success-default: #10b981;
+  --colors-danger-default: #ef4444;
+  --colors-warning-default: #f59e0b;
+  --colors-border-default: #e2e8f0;
+  --colors-border-emphasized: #cbd5e1;
+}
