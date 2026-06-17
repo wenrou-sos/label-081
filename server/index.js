@@ -8,6 +8,7 @@ import employeesRouter from './routes/employees.js';
 import ordersRouter from './routes/orders.js';
 import shiftReportsRouter from './routes/shiftReports.js';
 import dashboardRouter from './routes/dashboard.js';
+import inventoryRouter from './routes/inventory.js';
 import { query } from './utils/dbHelper.js';
 
 dotenv.config();
@@ -68,6 +69,7 @@ app.use('/api/employees', employeesRouter);
 app.use('/api/orders', ordersRouter);
 app.use('/api/shift-reports', shiftReportsRouter);
 app.use('/api/dashboard', dashboardRouter);
+app.use('/api/inventory', inventoryRouter);
 
 app.use((err, req, res, next) => {
   console.error(err.stack);

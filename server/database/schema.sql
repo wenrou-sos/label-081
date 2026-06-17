@@ -223,3 +223,48 @@ INSERT INTO members (card_no, name, phone, level_id, balance, total_recharge, to
 ('M00003', '王五', '13900139003', 4, 5000.00, 10000.00, 5000.00, 2, 'active'),
 ('M00004', '赵六', '13900139004', 1, 200.00, 200.00, 0.00, 2, 'active'),
 ('M00005', '孙七', '13900139005', 2, 800.00, 1000.00, 200.00, 3, 'active');
+
+CREATE TABLE IF NOT EXISTS inventory (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  store_id INT NOT NULL,
+  name VARCHAR(100) NOT NULL COMMENT '物品名称',
+  unit VARCHAR(20) NOT NULL DEFAULT '瓶' COMMENT '单位：瓶/盒/条/根',
+  quantity DECIMAL(10,2) DEFAULT 0 COMMENT '当前库存数量',
+  min_stock DECIMAL(10,2) DEFAULT 0 COMMENT '最低库存预警线',
+  category VARCHAR(50) COMMENT '分类：精油/艾条/毛巾/其他',
+  remark TEXT,
+  status ENUM('active', 'inactive') DEFAULT 'active',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (store_id) REFERENCES stores(id),
+  UNIQUE KEY uk_store_name (store_id, name)
+);
+
+CREATE TABLE IF NOT EXISTS inventory_records (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  store_id INT NOT NULL,
+  item_id INT NOT NULL,
+  type ENUM('stock_in', 'stock_out', 'check') NOT NULL COMMENT '入库/出库/盘点',
+  quantity DECIMAL(10,2) NOT NULL COMMENT '变动数量',
+  before_quantity DECIMAL(10,2) NOT NULL COMMENT '变动前数量',
+  after_quantity DECIMAL(10,2) NOT NULL COMMENT '变动后数量',
+  operator VARCHAR(50) COMMENT '操作人',
+  remark VARCHAR(255) COMMENT '备注',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (store_id) REFERENCES stores(id),
+  FOREIGN KEY (item_id) REFERENCES inventory(id)
+);
+
+INSERT INTO inventory (store_id, name, unit, quantity, min_stock, category, remark) VALUES
+(1, '薰衣草精油', '瓶', 25, 10, '精油', '足疗专用'),
+(1, '生姜精油', '瓶', 18, 10, '精油', '驱寒暖身'),
+(1, '玫瑰精油', '瓶', 8, 10, '精油', 'SPA专用 - 库存不足'),
+(1, '艾条', '盒', 30, 15, '艾条', '艾灸养生专用'),
+(1, '一次性毛巾', '条', 200, 50, '毛巾', '单人使用'),
+(1, '足浴药包', '包', 45, 20, '其他', '中草药配方'),
+(2, '薰衣草精油', '瓶', 32, 10, '精油', '足疗专用'),
+(2, '艾条', '盒', 22, 15, '艾条', '艾灸养生专用'),
+(2, '一次性毛巾', '条', 180, 50, '毛巾', '单人使用'),
+(3, '生姜精油', '瓶', 15, 10, '精油', '驱寒暖身'),
+(3, '艾条', '盒', 40, 15, '艾条', '艾灸养生专用'),
+(3, '一次性毛巾', '条', 250, 50, '毛巾', '单人使用');

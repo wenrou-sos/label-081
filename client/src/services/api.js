@@ -73,6 +73,19 @@ export const shiftReportsApi = {
   shifts: (storeId) => api.get(`/shift-reports/shifts/${storeId}`)
 }
 
+export const inventoryApi = {
+  list: (params) => api.get('/inventory', { params }),
+  get: (id) => api.get(`/inventory/${id}`),
+  create: (data) => api.post('/inventory', data),
+  update: (id, data) => api.put(`/inventory/${id}`, data),
+  remove: (id) => api.delete(`/inventory/${id}`),
+  categories: () => api.get('/inventory/categories'),
+  summary: (params) => api.get('/inventory/summary', { params }),
+  stockIn: (data) => api.post('/inventory/stock-in', data),
+  stockOut: (data) => api.post('/inventory/stock-out', data),
+  records: (itemId, params) => api.get(`/inventory/${itemId}/records`, { params })
+}
+
 export const dashboardApi = {
   summary: (params) => api.get('/dashboard/summary', { params }),
   trend: (days) => api.get('/dashboard/trend', { params: { days } })
