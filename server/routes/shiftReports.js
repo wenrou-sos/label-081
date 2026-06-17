@@ -97,13 +97,35 @@ router.get('/generate/:store_id/:date/:shift_id', async (req, res) => {
     const { store_id, date, shift_id } = req.params;
     const shift = await queryOne('SELECT * FROM shifts WHERE id = ?', [shift_id]);
     
-    const orders = await query(`
-      SELECT o.*, sv.name as service_name, sv.category, e.name as employee_name
-      FROM orders o
-      LEFT JOIN services sv ON o.service_id = sv.id
-      LEFT JOIN employees e ON o.employee_id = e.id
-      WHERE o.store_id = ? AND o.order_date = ? AND o.status = 'completed'
-    `, [store_id, date]);
+    let orders;
+    if (shift) {
+      const { start_time, end_time } = shift;
+      const startDt = `${date} ${start_time}`;
+      let endDt;
+      if (end_time <= start_time) {
+        const nextDay = new Date(date);
+        nextDay.setDate(nextDay.getDate() + 1);
+        const nextDayStr = nextDay.toISOString().split('T')[0];
+        endDt = `${nextDayStr} ${end_time}`;
+      } else {
+        endDt = `${date} ${end_time}`;
+      }
+      orders = await query(`
+        SELECT o.*, sv.name as service_name, sv.category, e.name as employee_name
+        FROM orders o
+        LEFT JOIN services sv ON o.service_id = sv.id
+        LEFT JOIN employees e ON o.employee_id = e.id
+        WHERE o.store_id = ? AND o.created_at >= ? AND o.created_at < ? AND o.status = 'completed'
+      `, [store_id, startDt, endDt]);
+    } else {
+      orders = await query(`
+        SELECT o.*, sv.name as service_name, sv.category, e.name as employee_name
+        FROM orders o
+        LEFT JOIN services sv ON o.service_id = sv.id
+        LEFT JOIN employees e ON o.employee_id = e.id
+        WHERE o.store_id = ? AND o.order_date = ? AND o.status = 'completed'
+      `, [store_id, date]);
+    }
 
     const customer_count = orders.length;
     let cash_amount = 0, card_amount = 0, member_amount = 0;

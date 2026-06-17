@@ -39,7 +39,8 @@ export const membersApi = {
   recharge: (data) => api.post('/members/recharge', data),
   levels: () => api.get('/members/levels'),
   createLevel: (data) => api.post('/members/levels', data),
-  updateLevel: (id, data) => api.put(`/members/levels/${id}`, data)
+  updateLevel: (id, data) => api.put(`/members/levels/${id}`, data),
+  nextCardNo: () => api.get('/members/next-card-no')
 }
 
 export const employeesApi = {

@@ -241,18 +241,18 @@ export function Table({ columns, data, actions }) {
               {actions && (
                 <td style={{ padding: '12px 16px' }}>
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    {actions.map(act => (
+                    {actions.filter(act => !act.show || act.show(row)).map(act => (
                       <span
-                        key={act.label}
+                        key={typeof act.label === 'function' ? act.key : act.label}
                         onClick={() => act.onClick(row)}
                         style={{
-                          color: act.color || '#0891b2',
+                          color: typeof act.color === 'function' ? act.color(row) : (act.color || '#0891b2'),
                           cursor: 'pointer',
                           fontSize: 13,
                           fontWeight: 500
                         }}
                       >
-                        {act.label}
+                        {typeof act.label === 'function' ? act.label(row) : act.label}
                       </span>
                     ))}
                   </div>

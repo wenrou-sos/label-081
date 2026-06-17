@@ -3,6 +3,18 @@ import { query, queryOne } from '../utils/dbHelper.js';
 
 const router = Router();
 
+router.get('/next-card-no', async (req, res) => {
+  try {
+    const row = await queryOne(
+      "SELECT MAX(CAST(SUBSTRING(card_no, 2) AS UNSIGNED)) as max_no FROM members WHERE card_no LIKE 'M%'"
+    );
+    const nextNo = (row?.max_no || 0) + 1;
+    res.json({ success: true, data: { card_no: 'M' + String(nextNo).padStart(5, '0') } });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 router.get('/levels', async (req, res) => {
   try {
     const levels = await query('SELECT * FROM member_levels ORDER BY min_recharge');

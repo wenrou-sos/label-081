@@ -137,7 +137,7 @@ export default function Employees() {
             { label: '编辑', onClick: openEdit },
             { label: '调动', onClick: openTransfer, color: '#8b5cf6', show: (r) => r.status === 'active' },
             { label: '离职', onClick: handleResign, color: '#ef4444', show: (r) => r.status === 'active' }
-          ].map(a => ({ ...a, show: undefined }))}
+          ]}
         />
       </Card>
 
@@ -160,9 +160,34 @@ export default function Employees() {
           <Select label="所属门店" value={form.store_id} onChange={(v) => setForm({ ...form, store_id: v })}
             options={stores.map(s => ({ value: s.id, label: s.name }))} placeholder="请选择门店" />
         </div>
-        <Select label="擅长项目（可多选，逗号分隔ID）" value={form.skilled_services} onChange={(v) => setForm({ ...form, skilled_services: v })}
-          options={services.filter(s => s.status === 'active').map(s => ({ value: s.id, label: `${s.name}(¥${s.price})` }))}
-          placeholder="请选择擅长的服务项目" />
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ fontSize: 13, color: '#475569', marginBottom: 6, fontWeight: 500 }}>擅长项目（可多选）</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {services.filter(s => s.status === 'active').map(s => {
+              const selected = String(form.skilled_services || '').split(',').filter(Boolean).includes(String(s.id))
+              return (
+                <label key={s.id} style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  padding: '6px 12px', borderRadius: 8, cursor: 'pointer',
+                  background: selected ? '#e0f2fe' : '#f8fafc',
+                  border: `1px solid ${selected ? '#0891b2' : '#e2e8f0'}`,
+                  fontSize: 13, color: selected ? '#0e7490' : '#475569',
+                  fontWeight: selected ? 600 : 400,
+                  transition: 'all 0.15s'
+                }}>
+                  <input type="checkbox" checked={selected} onChange={() => {
+                    const current = String(form.skilled_services || '').split(',').filter(Boolean)
+                    const next = selected
+                      ? current.filter(id => id !== String(s.id))
+                      : [...current, String(s.id)]
+                    setForm({ ...form, skilled_services: next.join(',') })
+                  }} style={{ accentColor: '#0891b2' }} />
+                  {s.name} <span style={{ fontSize: 11, color: '#94a3b8' }}>¥{s.price}</span>
+                </label>
+              )
+            })}
+          </div>
+        </div>
         <Input label="入职日期" type="date" value={form.hire_date} onChange={(v) => setForm({ ...form, hire_date: v })} />
         <TextArea label="培训考核记录（JSON格式或备注）" value={form.training_records} onChange={(v) => setForm({ ...form, training_records: v })} rows={3} />
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>

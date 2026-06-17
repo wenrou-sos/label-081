@@ -102,6 +102,9 @@ router.post('/:id/transfer', async (req, res) => {
     if (!employee) {
       return res.status(404).json({ success: false, message: '员工不存在' });
     }
+    if (employee.status !== 'active') {
+      return res.status(400).json({ success: false, message: '该员工已离职，无法调动' });
+    }
     let history = [];
     if (employee.transfer_history) {
       try {
@@ -118,7 +121,7 @@ router.post('/:id/transfer', async (req, res) => {
     });
     await query(
       'UPDATE employees SET store_id = ?, transfer_history = ?, status = ? WHERE id = ?',
-      [target_store_id, JSON.stringify(history), 'active', req.params.id]
+      [target_store_id, JSON.stringify(history), employee.status, req.params.id]
     );
     res.json({ success: true, message: '调动成功' });
   } catch (error) {

@@ -28,9 +28,15 @@ export default function Members() {
 
   useEffect(() => { loadData() }, [filters])
 
-  const openAdd = () => {
+  const openAdd = async () => {
     setEditing(null)
-    const nextNo = 'M' + String(members.length + 1).padStart(5, '0')
+    let nextNo = ''
+    try {
+      const res = await membersApi.nextCardNo()
+      if (res.success) nextNo = res.data.card_no
+    } catch (e) {
+      nextNo = 'M' + String(members.length + 1).padStart(5, '0')
+    }
     setForm({ card_no: nextNo, name: '', phone: '', level_id: '', store_id: '', balance: 0 })
     setModalOpen(true)
   }
