@@ -14,7 +14,14 @@ const PERIOD_OPTIONS = [
 const RANK_MEDALS = ['🥇', '🥈', '🥉']
 
 export default function EmployeePerformance() {
-  const [summary, setSummary] = useState(null)
+  const [summary, setSummary] = useState({
+    total_technicians: 0,
+    total_orders: 0,
+    total_commission: 0,
+    avg_commission: 0,
+    start_date: '',
+    end_date: ''
+  })
   const [ranking, setRanking] = useState([])
   const [total, setTotal] = useState(0)
   const [stores, setStores] = useState([])
@@ -22,6 +29,7 @@ export default function EmployeePerformance() {
   const [isHeadquarters, setIsHeadquarters] = useState(false)
   const [filters, setFilters] = useState({ store_id: '', period: 'month' })
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
   const [detailModal, setDetailModal] = useState(false)
   const [detailData, setDetailData] = useState(null)
   const [detailLoading, setDetailLoading] = useState(false)
@@ -47,6 +55,7 @@ export default function EmployeePerformance() {
 
   const loadData = async () => {
     setLoading(true)
+    setError(null)
     try {
       const effectiveStoreId = isHeadquarters ? filters.store_id : (currentUser?.store_id || filters.store_id)
       const params = { store_id: effectiveStoreId, period: filters.period }
@@ -54,13 +63,31 @@ export default function EmployeePerformance() {
         employeePerformanceApi.summary(params),
         employeePerformanceApi.ranking({ ...params, page_size: 100 })
       ])
-      if (sumRes.success) setSummary(sumRes.data)
+      if (sumRes.success) {
+        setSummary(sumRes.data)
+        if (sumRes.warning) {
+          setError(sumRes.warning)
+        }
+      }
       if (rankRes.success) {
         setRanking(rankRes.data.list)
         setTotal(rankRes.data.total)
+        if (rankRes.warning && !sumRes?.warning) {
+          setError(rankRes.warning)
+        }
       }
     } catch (e) {
       console.error(e)
+      setSummary({
+        total_technicians: 0,
+        total_orders: 0,
+        total_commission: 0,
+        avg_commission: 0,
+        start_date: '',
+        end_date: ''
+      })
+      setRanking([])
+      setTotal(0)
     } finally {
       setLoading(false)
     }
@@ -124,6 +151,24 @@ export default function EmployeePerformance() {
         </div>
       </div>
 
+      {error && (
+        <div style={{
+          padding: '12px 16px',
+          background: '#fffbeb',
+          border: '1px solid #fcd34d',
+          color: '#92400e',
+          borderRadius: 8,
+          fontSize: 13,
+          marginBottom: 16,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8
+        }}>
+          <span style={{ fontSize: 16 }}>⚠️</span>
+          <span>{error}</span>
+        </div>
+      )}
+
       <Card style={{ marginBottom: 16 }}>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
           {isHeadquarters && (
@@ -139,7 +184,7 @@ export default function EmployeePerformance() {
               style={{ marginBottom: 0 }} />
           </div>
           <div style={{ fontSize: 13, color: '#64748b', paddingBottom: 10 }}>
-            统计周期：{summary?.start_date} 至 {summary?.end_date}
+            统计周期：{summary?.start_date || '-'} 至 {summary?.end_date || '-'}
           </div>
         </div>
       </Card>
@@ -327,23 +372,29 @@ export default function EmployeePerformance() {
             <Card style={{ marginBottom: 16 }}>
               <h4 style={{ fontSize: 14, fontWeight: 600, color: '#1e293b', margin: 0, marginBottom: 12 }}>近6个月业绩趋势</h4>
               <div style={{ height: 240 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={detailData.monthly_stats}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                    <XAxis dataKey="label" tick={{ fontSize: 12, fill: '#64748b' }} />
-                    <YAxis yAxisId="left" tick={{ fontSize: 11, fill: '#64748b' }} />
-                    <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11, fill: '#64748b' }} />
-                    <Tooltip
-                      formatter={(value, name) => {
-                        if (name === '上钟次数') return [`${value} 次`, '上钟次数']
-                        return [`¥${Number(value).toLocaleString()}`, name]
-                      }}
-                    />
-                    <Legend />
-                    <Line yAxisId="left" type="monotone" dataKey="order_count" stroke="#0891b2" strokeWidth={2.5} dot={{ fill: '#0891b2', r: 5 }} name="上钟次数" />
-                    <Line yAxisId="right" type="monotone" dataKey="total_commission" stroke="#f97316" strokeWidth={2.5} dot={{ fill: '#f97316', r: 5 }} name="提成金额" />
-                  </LineChart>
-                </ResponsiveContainer>
+                {detailData.monthly_stats && detailData.monthly_stats.length > 0 && detailData.monthly_stats.some(m => m.order_count > 0 || m.total_commission > 0) ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={detailData.monthly_stats}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                      <XAxis dataKey="label" tick={{ fontSize: 12, fill: '#64748b' }} />
+                      <YAxis yAxisId="left" tick={{ fontSize: 11, fill: '#64748b' }} />
+                      <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11, fill: '#64748b' }} />
+                      <Tooltip
+                        formatter={(value, name) => {
+                          if (name === '上钟次数') return [`${value} 次`, '上钟次数']
+                          return [`¥${Number(value).toLocaleString()}`, name]
+                        }}
+                      />
+                      <Legend />
+                      <Line yAxisId="left" type="monotone" dataKey="order_count" stroke="#0891b2" strokeWidth={2.5} dot={{ fill: '#0891b2', r: 5 }} name="上钟次数" />
+                      <Line yAxisId="right" type="monotone" dataKey="total_commission" stroke="#f97316" strokeWidth={2.5} dot={{ fill: '#f97316', r: 5 }} name="提成金额" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: 13 }}>
+                    近6个月暂无业绩数据
+                  </div>
+                )}
               </div>
             </Card>
 
@@ -351,40 +402,52 @@ export default function EmployeePerformance() {
               <Card>
                 <h4 style={{ fontSize: 14, fontWeight: 600, color: '#1e293b', margin: 0, marginBottom: 12 }}>本月项目分布（次数）</h4>
                 <div style={{ height: 220 }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={detailData.service_stats} layout="vertical">
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                      <XAxis type="number" tick={{ fontSize: 11, fill: '#64748b' }} />
-                      <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: '#64748b' }} width={70} />
-                      <Tooltip />
-                      <Bar dataKey="count" fill="#0891b2" radius={[0, 4, 4, 0]} name="次数" />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  {detailData.service_stats && detailData.service_stats.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={detailData.service_stats} layout="vertical">
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                        <XAxis type="number" tick={{ fontSize: 11, fill: '#64748b' }} />
+                        <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: '#64748b' }} width={70} />
+                        <Tooltip />
+                        <Bar dataKey="count" fill="#0891b2" radius={[0, 4, 4, 0]} name="次数" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: 13 }}>
+                      本月暂无服务数据
+                    </div>
+                  )}
                 </div>
               </Card>
 
               <Card>
                 <h4 style={{ fontSize: 14, fontWeight: 600, color: '#1e293b', margin: 0, marginBottom: 12 }}>本月提成分布</h4>
                 <div style={{ height: 220 }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={detailData.service_stats}
-                        dataKey="commission"
-                        nameKey="name"
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={75}
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                        labelLine={{ stroke: '#94a3b8', strokeWidth: 1 }}
-                      >
-                        {detailData.service_stats.map((_, i) => (
-                          <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip formatter={(v) => `¥${Number(v).toLocaleString()}`} />
-                    </PieChart>
-                  </ResponsiveContainer>
+                  {detailData.service_stats && detailData.service_stats.length > 0 && detailData.service_stats.some(s => s.commission > 0) ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={detailData.service_stats}
+                          dataKey="commission"
+                          nameKey="name"
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={75}
+                          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                          labelLine={{ stroke: '#94a3b8', strokeWidth: 1 }}
+                        >
+                          {detailData.service_stats.map((_, i) => (
+                            <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(v) => `¥${Number(v).toLocaleString()}`} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: 13 }}>
+                      本月暂无提成数据
+                    </div>
+                  )}
                 </div>
               </Card>
             </div>
