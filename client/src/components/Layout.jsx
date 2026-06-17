@@ -8,6 +8,7 @@ const menuItems = [
   { path: '/member-levels', label: '会员体系', icon: '💎', group: '总部管理' },
   { path: '/employees', label: '员工管理', icon: '👥', group: '人事管理' },
   { path: '/members', label: '会员管理', icon: '💳', group: '门店运营' },
+  { path: '/member-analysis', label: '会员分析', icon: '📈', group: '门店运营' },
   { path: '/orders', label: '订单记录', icon: '💰', group: '门店运营' },
   { path: '/shift-reports', label: '交接班报表', icon: '📝', group: '门店运营' },
 ]

@@ -40,7 +40,14 @@ export const membersApi = {
   levels: () => api.get('/members/levels'),
   createLevel: (data) => api.post('/members/levels', data),
   updateLevel: (id, data) => api.put(`/members/levels/${id}`, data),
-  nextCardNo: () => api.get('/members/next-card-no')
+  nextCardNo: () => api.get('/members/next-card-no'),
+  analysisSummary: () => api.get('/members/analysis/summary'),
+  analysisLevelDistribution: () => api.get('/members/analysis/level-distribution'),
+  analysisTrend: (params) => api.get('/members/analysis/trend', { params }),
+  analysisWarnings: (params) => api.get('/members/analysis/warnings', { params }),
+  markFollowUp: (id, data) => api.post(`/members/${id}/follow-up`, data),
+  batchFollowUp: (data) => api.post('/members/batch/follow-up', data),
+  batchSendSms: (data) => api.post('/members/batch/send-sms', data)
 }
 
 export const employeesApi = {
