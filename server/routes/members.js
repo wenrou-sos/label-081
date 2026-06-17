@@ -24,12 +24,13 @@ router.get('/analysis/summary', async (req, res) => {
     );
     const lowBalance = await queryOne('SELECT COUNT(*) as count FROM members WHERE status = ? AND balance < 50', ['active']);
     const inactive = await queryOne(
-      `SELECT COUNT(DISTINCT m.id) as count 
+      `SELECT COUNT(*) as count 
        FROM members m 
-       LEFT JOIN orders o ON m.id = o.member_id AND o.status = 'completed'
        WHERE m.status = ?
-       GROUP BY m.id
-       HAVING MAX(o.order_date) IS NULL OR MAX(o.order_date) < DATE_SUB(CURDATE(), INTERVAL 30 DAY)`,
+       AND (
+         NOT EXISTS (SELECT 1 FROM orders o WHERE o.member_id = m.id AND o.status = 'completed')
+         OR (SELECT MAX(o.order_date) FROM orders o WHERE o.member_id = m.id AND o.status = 'completed') < DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+       )`,
       ['active']
     );
     const highValue = await queryOne('SELECT COUNT(*) as count FROM members WHERE status = ? AND total_consume >= 5000', ['active']);
