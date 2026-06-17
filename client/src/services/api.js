@@ -133,4 +133,14 @@ export const dashboardApi = {
   trend: (days) => api.get('/dashboard/trend', { params: { days } })
 }
 
+export const employeePerformanceApi = {
+  summary: (params) => api.get('/employee-performance/summary', { params }),
+  ranking: (params) => api.get('/employee-performance/ranking', { params }),
+  detail: (id) => api.get(`/employee-performance/${id}/detail`),
+  exportCsv: (params) => api.get('/employee-performance/export/csv', {
+    params,
+    responseType: 'blob'
+  })
+}
+
 export default api

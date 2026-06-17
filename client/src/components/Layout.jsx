@@ -8,6 +8,7 @@ const menuItems = [
   { path: '/services', label: '项目定价', icon: '📋', group: '总部管理', roles: ['headquarters'] },
   { path: '/member-levels', label: '会员体系', icon: '💎', group: '总部管理', roles: ['headquarters'] },
   { path: '/employees', label: '员工管理', icon: '👥', group: '人事管理', roles: ['headquarters', 'store_manager'] },
+  { path: '/employee-performance', label: '技师业绩看板', icon: '📈', group: '人事管理', roles: ['headquarters', 'store_manager'] },
   { path: '/members', label: '会员管理', icon: '💳', group: '门店运营', roles: ['headquarters', 'store_manager', 'cashier'] },
   { path: '/member-analysis', label: '会员分析', icon: '📈', group: '门店运营', roles: ['headquarters', 'store_manager'] },
   { path: '/inventory', label: '库存管理', icon: '📦', group: '门店运营', roles: ['headquarters', 'store_manager', 'cashier'] },

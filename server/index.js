@@ -9,6 +9,7 @@ import ordersRouter from './routes/orders.js';
 import shiftReportsRouter from './routes/shiftReports.js';
 import dashboardRouter from './routes/dashboard.js';
 import inventoryRouter from './routes/inventory.js';
+import employeePerformanceRouter from './routes/employeePerformance.js';
 import authRouter from './routes/auth.js';
 import { query } from './utils/dbHelper.js';
 
@@ -72,6 +73,7 @@ app.use('/api/orders', ordersRouter);
 app.use('/api/shift-reports', shiftReportsRouter);
 app.use('/api/dashboard', dashboardRouter);
 app.use('/api/inventory', inventoryRouter);
+app.use('/api/employee-performance', employeePerformanceRouter);
 
 app.use((err, req, res, next) => {
   console.error(err.stack);

@@ -8,6 +8,7 @@ import MemberLevels from './pages/MemberLevels.jsx'
 import Members from './pages/Members.jsx'
 import MemberAnalysis from './pages/MemberAnalysis.jsx'
 import Inventory from './pages/Inventory.jsx'
+import EmployeePerformance from './pages/EmployeePerformance.jsx'
 import Employees from './pages/Employees.jsx'
 import Orders from './pages/Orders.jsx'
 import ShiftReports from './pages/ShiftReports.jsx'
@@ -35,6 +36,7 @@ export default function App() {
         <Route path="members" element={<Members />} />
         <Route path="member-analysis" element={<MemberAnalysis />} />
         <Route path="inventory" element={<Inventory />} />
+        <Route path="employee-performance" element={<EmployeePerformance />} />
         <Route path="employees" element={<Employees />} />
         <Route path="orders" element={<Orders />} />
         <Route path="shift-reports" element={<ShiftReports />} />
